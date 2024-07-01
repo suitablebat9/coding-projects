@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            margin: 0;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none; /* Prevent text selection */
+        }
+
+        .container {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            width: 300px;
+            text-align: center;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            cursor: move;
+        }
+
+        .clock-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            text-align: center;
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            font-size: 2em;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 75px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #555;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        span {
+            margin-left: 15px;
+            cursor: pointer;
+            vertical-align: middle; /* Align vertically */
+        }
+
+        .toggle-link {
+            color: inherit; /* Keep the text color same as parent */
+            text-decoration: none; /* Remove underline */
+            margin-left: 10px; /* Adjust spacing from the switch */
+            vertical-align: middle; /* Align vertically */
+        }
+
+        .lock-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 60px;
+            height: 30px;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            user-select: none; /* Prevent text selection */
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="draggableContainer">
+        <h1>Smart Home Dashboard</h1>
+        <div class="toggle-switch">
+            <label class="switch">
+                <input type="checkbox" id="toggleLight" onclick="toggleDevice('light')" checked>
+                <span class="slider"></span>
+            </label>
+            <span>Bedroom Lights</span>
+        </div>
+        <div class="toggle-switch">
+            <label class="switch">
+                <input type="checkbox" id="toggleLeds" onclick="toggleDevice('led')" checked>
+                <span class="slider"></span>
+            </label>
+            <span>Bedroom Led Lights</span>
+        </div>
+        <!--<div id="status"></div>-->
+    </div>
+    
+    <button class="lock-button" id="lockButton" onclick="toggleLock()">Unlock</button>
+
+    <div class="clock-container" id="clock">
+        <!-- Clock will be displayed here -->
+    </div>
+
+    <script>
+        const apiKey = 'GOVEE_API_KEY'; // Replace with your actual Govee API key
+
+        // Device configurations
+        const devices = {
+            light: {
+                device: 'DEVICE_ID', // Replace with your actual device ID for lights
+                model: 'DEVICE_MODEL'       // Replace with your actual model for lights
+            },
+            led: {
+                device: 'DEVICE_ID',   // Replace with your actual device ID for LEDs
+                model: 'DEVICE_MODEL'         // Replace with your actual model for LEDs
+            }
+        };
+
+        // Retrieve state from local storage if available
+        const storedStates = JSON.parse(localStorage.getItem('states'));
+        const states = storedStates ? storedStates : {
+            light: 'off',
+            led: 'off',
+            blinds: 'off'
+        };
+
+        async function toggleDevice(type) {
+            const newState = states[type] === 'on' ? 'off' : 'on';
+            const deviceInfo = devices[type];
+            const url = 'https://developer-api.govee.com/v1/devices/control';
+
+            const body = {
+                device: deviceInfo.device,
+                model: deviceInfo.model,
+                cmd: {
+                    name: "turn",
+                    value: newState
+                }
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Govee-API-Key': apiKey
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    states[type] = newState;
+                    localStorage.setItem('states', JSON.stringify(states)); // Save state to local storage
+                    document.getElementById(`status`).innerText = `${type.charAt(0).toUpperCase() + type.slice(1)} light turned ${newState}`;
+                    document.getElementById(`toggle${type.charAt(0).toUpperCase() + type.slice(1)}`).checked = (newState === 'on');
+                } else {
+                    document.getElementById('status').innerText = `Error: ${data.message}`;
+                }
+            } catch (error) {
+                document.getElementById('status').innerText = `Request failed: ${error.message}`;
+            }
+        }
+
+        // Function to open the link in the same tab
+        function openLink(link) {
+            window.location.href = link;
+        }
+
+        // Set the initial state of the toggle switches
+        document.addEventListener('DOMContentLoaded', (event) => {
+            document.getElementById('toggleLight').checked = (states.light === 'on');
+            document.getElementById('toggleLeds').checked = (states.led === 'on');
+            document.getElementById('toggleBlinds').checked = (states.blinds === 'on');
+        });
+
+        let isLocked = JSON.parse(localStorage.getItem('isLocked')) || false;
+
+        function toggleLock() {
+            const container = document.getElementById('draggableContainer');
+            const lockButton = document.getElementById('lockButton');
+
+            if (isLocked) {
+                container.classList.remove('locked'); // Unlock
+                isLocked = false;
+                lockButton.innerText = 'Lock';
+            } else {
+                container.classList.add('locked'); // Lock
+                isLocked = true;
+                lockButton.innerText = 'Unlock';
+            }
+
+            localStorage.setItem('isLocked', JSON.stringify(isLocked));
+        }
+
+        const container = document.getElementById('draggableContainer');
+        container.style.top = localStorage.getItem('containerTop') || '50px';
+        container.style.left = localStorage.getItem('containerLeft') || '50px';
+
+        container.addEventListener('mousedown', startDrag);
+
+        function startDrag(e) {
+            if (isLocked) return; // Prevent dragging when locked
+
+            let offsetX = e.clientX - parseInt(container.style.left);
+            let offsetY = e.clientY - parseInt(container.style.top);
+
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+
+            function drag(e) {
+                let newLeft = e.clientX - offsetX;
+                let newTop = e.clientY - offsetY;
+
+                // Boundary checks
+                newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - container.offsetWidth));
+                newTop = Math.max(0, Math.min(newTop, window.innerHeight - container.offsetHeight));
+
+                container.style.left = `${newLeft}px`;
+                container.style.top = `${newTop}px`;
+            }
+
+            function stopDrag() {
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+
+                localStorage.setItem('containerTop', container.style.top);
+                localStorage.setItem('containerLeft', container.style.left);
+            }
+        }
+
+        // Set initial lock state on page load
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const lockButton = document.getElementById('lockButton');
+            if (isLocked) {
+                document.getElementById('draggableContainer').classList.add('locked');
+                lockButton.innerText = 'Unlock';
+            } else {
+                lockButton.innerText = 'Lock';
+            }
+        });
+
+        const clockContainer = document.getElementById('clock');
+        setInterval(() => {
+            const now = new Date();
+            const hours = now.getHours() % 12 || 12;
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+            const timeString = `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds} ${ampm}`;
+            clockContainer.textContent = timeString;
+        }, 1000);
+    </script>
+</body>
+</html>
