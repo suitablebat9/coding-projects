@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coupon Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        .btn {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Coupon Manager</h1>
+    <h2>Total Coupons: <span id="couponCount">0</span></h2> <!-- Counter for total coupons -->
+    <form id="couponForm">
+        <input type="hidden" id="couponIndex" name="couponIndex">
+        <label for="whatFor">What For:</label>
+        <input type="text" id="whatFor" name="whatFor" required>
+        <br>
+        <label for="code">Code:</label>
+        <input type="text" id="code" name="code" required>
+        <br>
+        <label for="discount">Discount/Perk:</label>
+        <input type="text" id="discount" name="discount" required>
+        <br>
+        <label for="productLink">Product/Website Link:</label>
+        <input type="url" id="productLink" name="productLink">
+        <br>
+        <label for="videoLink">Video Link:</label>
+        <input type="url" id="videoLink" name="videoLink">
+        <br>
+        <label for="dateAdded">Date Added:</label>
+        <input type="date" id="dateAdded" name="dateAdded" required>
+        <br>
+        <label for="works">Works:</label>
+        <input type="checkbox" id="works" name="works">
+        <br><br>
+        <button type="submit" id="submitButton">Add Coupon</button>
+    </form>
+
+    <h2>Search Coupons</h2>
+    <input type="text" id="searchInput" placeholder="Search">
+    
+    <table id="couponTable">
+        <thead>
+            <tr>
+                <th>What For</th>
+                <th>Code</th>
+                <th>Discount/Perk</th>
+                <th>Product/Website Link</th>
+                <th>Video Link</th>
+                <th>Date Added</th>
+                <th>Works</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="couponTableBody">
+            <!-- Coupon rows will be added here -->
+        </tbody>
+    </table>
+
+    <script>
+        let coupons = JSON.parse(localStorage.getItem('coupons')) || [];
+        
+        // Function to display coupons and update the counter
+        function displayCoupons(searchText = '') {
+            const tableBody = document.getElementById('couponTableBody');
+            tableBody.innerHTML = '';
+            const filteredCoupons = coupons.filter(coupon => coupon.whatFor.toLowerCase().includes(searchText.toLowerCase()));
+            filteredCoupons.forEach((coupon, index) => {
+                // Add coupon to the table
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${coupon.whatFor}</td>
+                    <td>${coupon.code}</td>
+                    <td>${coupon.discount}</td>
+                    <td>${shortenURL(coupon.productLink)}</td>
+                    <td>${shortenURL(coupon.videoLink)}</td>
+                    <td>${coupon.dateAdded}</td>
+                    <td>${coupon.works ? 'Yes' : 'No'}</td>
+                    <td>
+                        <button class="btn" onclick="editCoupon(${index})">Edit</button>
+                        <button class="btn" onclick="confirmDeleteCoupon(${index})">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            // Update the coupon counter
+            document.getElementById('couponCount').textContent = filteredCoupons.length;
+        }
+
+        // Function to add or update a coupon
+        document.getElementById('couponForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const coupon = {
+                whatFor: event.target.whatFor.value,
+                code: event.target.code.value,
+                discount: event.target.discount.value,
+                productLink: event.target.productLink.value,
+                videoLink: event.target.videoLink.value,
+                dateAdded: event.target.dateAdded.value,
+                works: event.target.works.checked
+            };
+
+            const couponIndex = event.target.couponIndex.value;
+            if (couponIndex) {
+                // Update existing coupon
+                coupons[couponIndex] = coupon;
+            } else {
+                // Add new coupon
+                coupons.push(coupon);
+            }
+
+            localStorage.setItem('coupons', JSON.stringify(coupons));
+            event.target.reset();
+            document.getElementById('couponIndex').value = '';
+            document.getElementById('submitButton').textContent = 'Add Coupon';
+            displayCoupons();
+        });
+
+        // Function to search coupons
+        document.getElementById('searchInput').addEventListener('input', function(event) {
+            displayCoupons(event.target.value);
+        });
+
+        // Function to edit a coupon
+        function editCoupon(index) {
+            const coupon = coupons[index];
+            document.getElementById('couponIndex').value = index;
+            document.getElementById('whatFor').value = coupon.whatFor;
+            document.getElementById('code').value = coupon.code;
+            document.getElementById('discount').value = coupon.discount;
+            document.getElementById('productLink').value = coupon.productLink;
+            document.getElementById('videoLink').value = coupon.videoLink;
+            document.getElementById('dateAdded').value = coupon.dateAdded;
+            document.getElementById('works').checked = coupon.works;
+            document.getElementById('submitButton').textContent = 'Update Coupon';
+        }
+
+        // Function to confirm and delete a coupon
+        function confirmDeleteCoupon(index) {
+            const confirmDelete = confirm("Are you sure you want to delete this coupon?");
+            if (confirmDelete) {
+                deleteCoupon(index);
+            }
+        }
+
+        // Function to delete a coupon
+        function deleteCoupon(index) {
+            coupons.splice(index, 1);
+            localStorage.setItem('coupons', JSON.stringify(coupons));
+            displayCoupons();
+        }
+
+        // Function to shorten the URL for display
+        function shortenURL(url) {
+            if (!url) return '';
+            const link = document.createElement('a');
+            link.href = url;
+            return `<a href="${url}" target="_blank">${link.hostname}</a>`;
+        }
+
+        // Initial display of coupons
+        displayCoupons();
+    </script>
+</body>
+</html>
