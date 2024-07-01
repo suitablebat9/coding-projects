@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Govee Device Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Control Govee Devices</h1>
+    <button onclick="turnOn()">Turn On</button>
+    <button onclick="turnOff()">Turn Off</button>
+
+    <script>
+        const apiKey = 'YOUR_API_KEY';
+        const deviceId = 'YOUR_DEVICE_ID';
+        const model = 'YOUR_DEVICE_MODEL';
+
+        async function sendCommand(command) {
+            const url = 'https://developer-api.govee.com/v1/devices/control';
+            const body = {
+                device: deviceId,
+                model: model,
+                cmd: command
+            };
+
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Govee-API-Key': apiKey
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Error:', error.message);
+                alert('Failed to send command: ' + error.message);
+            } else {
+                alert('Command sent successfully!');
+            }
+        }
+
+        function turnOn() {
+            const command = {
+                name: 'turn',
+                value: 'on'
+            };
+            sendCommand(command);
+        }
+
+        function turnOff() {
+            const command = {
+                name: 'turn',
+                value: 'off'
+            };
+            sendCommand(command);
+        }
+    </script>
+</body>
+</html>
